@@ -25,6 +25,25 @@ Only the frontmatter `description` is loaded at startup; the body loads when the
 
 ## Install
 
+Works with any agent that supports the skills format (Claude Code, Cursor, Codex, Gemini CLI, OpenCode, and others).
+
+### Skills CLI
+
+```bash
+# All skills
+npx skills add AbdoPrDZ/ai-skills
+
+# Single skill
+npx skills add AbdoPrDZ/ai-skills -s project-context
+
+# Platform-specific
+npx skills add AbdoPrDZ/ai-skills -a cursor
+npx skills add AbdoPrDZ/ai-skills -a codex
+npx skills add AbdoPrDZ/ai-skills -a claude-code
+```
+
+### Manual
+
 Copy a skill directory into your agent's skills location:
 
 ```bash
@@ -33,8 +52,6 @@ Copy a skill directory into your agent's skills location:
 # or per-project
 .agents/skills/<skill-name>
 ```
-
-Or point your agent's skill loader at this repository.
 
 ## Writing Skills
 
