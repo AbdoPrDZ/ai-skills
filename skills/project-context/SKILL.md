@@ -6,106 +6,108 @@ description: >-
   so agents understand the codebase without re-exploring it every session. Use
   when starting work on a project with no .agents/context (bootstrap), before
   substantial project work (read context first), after significant changes to
-  architecture, domains, APIs, data models, or workflows, or when the user asks
-  to update, audit, or initialize the project context.
+  architecture, domains, APIs, data models, auth, or infrastructure, or when the
+  user asks to update, audit, or initialize the project context.
 ---
 
 # Project Context
 
-Maintain structured, AI-readable project context in `.agents/context/`. The context gives coding agents reliable high-level understanding of a project without repeated full-codebase exploration. It is a **knowledge layer derived from the actual project** — never a replacement for verifying the project itself.
+Maintain a compact, reliable knowledge layer in `.agents/context/`. The purpose is NOT to document the codebase — it is to capture the smallest amount of accurate information a new AI agent needs to understand the project and safely modify it without unnecessary exploration.
 
-## Iron Rules
+## Source Of Truth
 
-**Source of truth is always the actual project**, in this order: source code, database/schema, configuration, infrastructure/deployment configuration, tests and other executable project artifacts. Context is derived knowledge.
+Context is **derived knowledge**, never authoritative:
 
-If context contradicts the actual project:
+```text
+Actual project > context configuration > existing context > framework defaults
+```
 
-1. Verify the actual project.
-2. Treat the project as authoritative.
-3. Correct the outdated context if appropriate.
-4. Continue the requested task.
+If context conflicts with the actual project: verify the project, trust the project, correct the context, continue the task. Never modify source code to match outdated context. Never treat context as correct merely because it exists.
 
-Never modify source code merely to make it agree with outdated context. When information conflicts: **actual project > config.md > existing context > framework defaults**.
+## When This Skill Applies
 
-## Core Responsibilities
+At session start and before substantial work, check whether `.agents/context/` exists.
 
-1. **Bootstrap** — create the context system when missing; analyze the project; generate appropriate files.
-2. **Understand** — read context before performing project work; use it to reduce unnecessary exploration.
-3. **Maintain** — detect changes that affect project knowledge; act according to the configured update mode.
-4. **Synchronize** — keep context consistent with the actual project; correct outdated or inaccurate context when discovered.
+- **Exists** → it is the project's memory; follow the reading workflow below.
+- **Missing** → bootstrap it per [bootstrap.md](./references/bootstrap.md). Detect technology, check for a template, ask for preferences, then create the core files. Never make the user explain the system manually.
+- Existing context is **never recreated** — preserve it and improve only when necessary.
 
 ## Context Layout
 
 ```text
 .agents/context/
-├── README.md      # entry point: what exists here, how an agent should use it, which files to read per task
-├── config.md      # update mode, detail level, scope, template, other maintenance preferences
-├── structure.md   # specification of the context itself: files, responsibilities, creation rules, detail levels
-└── domains/       # optional: per-domain files (authentication.md, orders.md, ...)
+├── README.md      # entry point: what exists, how to use it, navigation
+├── config.md      # update mode, detail level, scope, template
+├── structure.md   # specification of which context files exist and why
+└── domains/       # optional per-domain files (authentication.md, orders.md, ...)
 ```
 
-- `README.md` must explain what the directory contains, how an AI agent should use it, which files exist, which files to read for common tasks, and navigation information. Keep it concise; it never duplicates the whole context.
-- `config.md` defines how the context system behaves: update mode, detail level, scope, template, and other project-specific preferences.
-- `structure.md` is the **context structure specification**: which files exist, what each is responsible for, when a file is created, what belongs and does not belong in each file, how structure differs per detail level, and domain organization where applicable. It lives inside the context and is therefore itself maintained.
+The three core files have distinct responsibilities:
 
-## Startup Check
+- `README.md` — concise entry point and navigation; never duplicates the rest of the context.
+- `config.md` — defines how the AI must maintain the context.
+- `structure.md` — the **context structure specification**: available files, their purpose, what belongs in each, when to create them, per-detail-level structures. Full contract: [structure.md](./references/structure.md).
 
-Check whether `.agents/context/` exists.
+## Reading Workflow
 
-- **Exists:** read `README.md`, `config.md`, `structure.md`; follow the configured rules. Never recreate or destroy existing context because it differs from a preferred default. Improve incomplete files only when necessary.
-- **Missing:** bootstrap it — see [bootstrap-and-config.md](./references/bootstrap-and-config.md). Ask for update mode, detail level, and scope preferences during bootstrap; persist them in `config.md`.
-
-## Read Before Tasks
-
-Recommended order:
+Before substantial coding work:
 
 ```text
 README.md → config.md → structure.md → relevant context files → relevant source code
 ```
 
-Do not blindly read every context file on every task. Use `README.md` and `structure.md` to determine relevance:
+Do not blindly read every file. Use `structure.md` to select what is relevant (database task → database/architecture/domain files; API task → api/architecture; UI task → frontend conventions). Context reduces exploration; it never replaces verifying actual source code.
 
-- Database task → `database.md`, `architecture.md`, relevant domain context
-- API task → `api.md`, `architecture.md`, relevant domain context
-- UI task → frontend architecture, conventions, relevant domain context
+## Change Significance
 
-## After Every Substantial Task
+After every meaningful coding task, ask: **did this change alter persistent project knowledge?**
 
-Ask internally: **did this change alter persistent project knowledge?**
+| Level | Typical changes | Action |
+|---|---|---|
+| 0 | Formatting, typos, renames, minor CSS, internal refactors, temp/debug changes | Ignore |
+| 1 | Helpers, reusable components, patterns, minor deps/conventions | Evaluate |
+| 2 | Modules, APIs, DB entities, integrations, workflows, auth changes | Update |
+| 3 | Architecture, DB/auth/deployment architecture, major rules/domains/systems | Mandatory |
 
-- No (variable renames, formatting, typo fixes, minor CSS, small internal refactors, non-behavioral bug fixes): do not update context. These are implementation details, not persistent knowledge.
-- Yes: classify the change significance (Level 0–3) per [change-significance.md](./references/change-significance.md), then follow the configured update mode per [context-updates.md](./references/context-updates.md).
+Classification rules and examples: [change-detection.md](./references/change-detection.md).
 
-Final checks:
+## Update Modes
 
-- Did the organization of the context change? → update `structure.md`.
-- Did navigation change? → update `README.md`.
+Configured in `config.md`; governs handling of detected Level 2–3 changes:
 
-## User Requests Override Detection
+- **automatic** — update affected context immediately, verify consistency, continue the task.
+- **ask** — report what changed, which files are affected, why it matters; wait for approval.
+- **manual** — never modify automatically; report that context may need updating; act only on explicit request.
 
-- "update the context" → update it regardless of the detected change level.
-- "do not update context" → do not update for the current task unless required for safety or correctness of the task itself.
-- "audit the context" → run the audit per [context-audit.md](./references/context-audit.md).
+Update procedure: [synchronization.md](./references/synchronization.md).
 
-## Quality Rules
+Always update **only the smallest set of affected files** — never rewrite the whole context for a local change.
 
-Context must be:
+## User Overrides
 
-- **Accurate** — never intentionally document information known to be false.
-- **Current** — remove or update information that is no longer true.
-- **Concise** — avoid unnecessary explanations.
-- **Discoverable** — an AI should quickly find what it needs.
-- **Stable** — avoid documenting temporary implementation details.
-- **Project-specific** — capture knowledge specific to this project; do not fill context with generic framework documentation.
+Explicit instructions override detection:
 
-## Do Not Over-Document
+- "update the context" → always update.
+- "do not update context" → skip for this task unless correctness requires it.
+- "audit the context" / "audit the project context" → run [audit.md](./references/audit.md).
 
-Never turn the context into a copy of the codebase. Do not document every class, function, endpoint, database column, or component unless the configured structure explicitly requires it and the information matters for AI-assisted development.
+## Anti-Patterns
 
-Prefer why / what / relationships / rules / workflows / important constraints over complete implementation inventories.
+| Anti-pattern | Do instead |
+|---|---|
+| Documentation dump — Markdown copy of the code | Capture why/what/rules/workflows, not inventories of classes or columns |
+| Context worship — trusting without checking | Verify against source; correct context when it is wrong |
+| Excessive updates on insignificant changes | Ignore Level 0 implementation details |
+| Full rewrites after local changes | Touch only the affected files |
+| Generic framework documentation | Document how THIS project uses the framework, not the framework itself |
+| Leaving stale context uncorrected | Fix it whenever the configured update mode permits |
 
-Content expectations per detail level: [detail-levels.md](./references/detail-levels.md).
+## Configuration
+
+Update mode, detail level (`minimal` / `standard` / `detailed`), and scope are persisted in `config.md`. Semantics: [configuration.md](./references/configuration.md).
+
+Framework-specific structures arrive as templates that populate `structure.md` — none are bundled with this skill: [templates.md](./references/templates.md).
 
 ## Principle
 
-The goal is not more documentation. The goal is **better AI memory**: the smallest amount of reliable information that lets a new agent understand the project quickly and make correct changes without unnecessary exploration.
+Better AI memory, not more documentation.
