@@ -22,6 +22,7 @@ Only the frontmatter `description` is loaded at startup; the body loads when the
 | Skill | Description |
 |-------|-------------|
 | [project-context](skills/project-context) | Maintains an AI-readable knowledge layer in `.agents/context/`: bootstrap on first contact, read before tasks, keep synchronized after significant changes (Level 0–3 classification), audit on request. Update modes: automatic / ask / manual. |
+| [local-mind-project](skills/local-mind-project) | Generate a complete application on top of the LocalMind agent framework: clone the repository, then build a domain layer (models, tools, services, scripts, configuration, interfaces) over its shared core — never rewriting the framework. |
 
 ## Install
 
